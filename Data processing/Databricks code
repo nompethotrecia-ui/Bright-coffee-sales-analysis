@@ -1,0 +1,176 @@
+ ---------------------------------------------------------
+-- DATA PREVIEW
+---------------------------------------------------------
+SELECT *
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1
+LIMIT 10;
+
+
+---------------------------------------------------------
+-- DATA UNDERSTANDING 
+---------------------------------------------------------
+
+-- Total rows
+SELECT COUNT(*) AS total_rows
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+-- Date range
+SELECT MIN(transaction_date) AS start_date
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+SELECT MAX(transaction_date) AS end_date
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+-- Store information
+SELECT DISTINCT store_location
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+
+SELECT COUNT(DISTINCT store_id) AS number_of_stores
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+-- Product exploration
+SELECT DISTINCT product_category
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+
+SELECT DISTINCT product_type
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+
+SELECT DISTINCT product_detail
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+
+-- Price range
+SELECT MIN(unit_price) AS cheapest_price
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+
+SELECT MAX(unit_price) AS highest_price
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+
+SELECT 
+  COUNT(*) AS total_rows,
+  COUNT(DISTINCT transaction_id) AS total_transactions,
+  COUNT(DISTINCT product_id) AS total_products,
+  COUNT(DISTINCT store_id) AS total_stores
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+
+SELECT transaction_date,
+       Dayname(transaction_date) AS Day_name
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+
+---------------------------------------------------------
+-- CREATE CLEAN TABLE
+---------------------------------------------------------
+REPLACE TABLE workspace.default.bright_coffee_shop_analysis_case_study_1_clean AS
+SELECT  *, 
+  CAST(REPLACE(unit_price, ',', '.') AS DOUBLE) AS unit_price_clean,
+
+  transaction_qty * CAST(REPLACE(unit_price, ',', '.') AS DOUBLE) AS total_amount,
+
+  CONCAT(HOUR(transaction_time), ':',
+    CASE 
+      WHEN MINUTE(transaction_time) < 30 THEN '00'
+      ELSE '30'
+     END AS transaction_time_bucket
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1;
+
+---------------------------------------------------------
+-- TOTAL REVENUE PER PRODUCT
+---------------------------------------------------------
+SELECT 
+  product_type,
+  SUM(total_amount) AS total_revenue
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean
+GROUP BY product_type
+ORDER BY total_revenue DESC;
+
+
+SELECT transaction_id,
+       transaction_date,
+       Dayname(transaction_date) AS Day_name,
+       Monthname(transaction_date) AS Month_name,
+       transaction_qty*unit_price_clean AS revenue_per_tnx
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean;
+
+
+SELECT COUNT(*)
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean;
+
+
+SELECT 
+       transaction_date,
+       Dayname(transaction_date) AS Day_name,
+       Monthname(transaction_date) AS Month_name,
+       COUNT(DISTINCT transaction_id) AS `Number of sales`,
+       SUM(total_amount) AS revenue_per_day
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean
+GROUP BY transaction_date,
+         Day_name,
+        Month_name;
+
+---------------------------------------------------------
+-- SALES BY TIME BUCKET
+---------------------------------------------------------
+SELECT 
+  transaction_time_bucket,
+  SUM(total_amount) AS total_revenue
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean
+GROUP BY transaction_time_bucket
+ORDER BY transaction_time_bucket;
+
+---------------------------------------------------------
+-- BEST SELLING PRODUCTS
+---------------------------------------------------------
+SELECT 
+  product_detail,
+  SUM(transaction_qty) AS total_units
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean
+GROUP BY product_detail
+ORDER BY total_units DESC
+LIMIT 20;
+
+
+SELECT 
+  product_category,
+  SUM(transaction_qty) AS total_units_sold
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean
+GROUP BY product_category
+ORDER BY total_units_sold DESC;
+
+---------------------------------------------------------
+-- PRODUCT PERFORMANCE BY TIME
+---------------------------------------------------------
+SELECT 
+  product_type,
+  transaction_time_bucket,
+  SUM(total_amount) AS revenue
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean
+GROUP BY product_type, transaction_time_bucket;
+
+
+SELECT 
+  store_location,
+  CASE
+    WHEN HOUR(transaction_time) BETWEEN 6 AND 9 THEN 'Morning Rush'
+    WHEN HOUR(transaction_time) BETWEEN 9 AND 12 THEN 'Mid Morning'
+    WHEN HOUR(transaction_time) BETWEEN 12 AND 15 THEN 'Afternoon'
+    WHEN HOUR(transaction_time) BETWEEN 15 AND 18 THEN 'Afternoon Rush'
+    ELSE 'Night'
+  END AS time_of_day,
+  SUM(total_amount) AS revenue
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean
+GROUP BY store_location, time_of_day;
+
+
+SELECT 
+    store_location,
+    SUM(total_amount) AS total_sales
+FROM workspace.default.bright_coffee_shop_analysis_case_study_1_clean
+GROUP BY store_location
+ORDER BY total_sales DESC;
